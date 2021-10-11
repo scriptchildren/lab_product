@@ -1,0 +1,20 @@
+app
+├── __init__.py
+├── __pycache__
+│   ├── __init__.cpython-36.pyc
+│   ├── admin_views.cpython-36.pyc
+│   └── views.cpython-36.pyc
+├── admin_views.py
+├── templates
+│   ├── admin
+│   │   └── dashboard.html
+│   ├── hello.html
+│   ├── layout.html
+│   └── public
+│       └── index.html
+└── views.py
+
+4 directories, 10 files
+
+
+新たにスクリプトを追加したいときはappディレクトリ以下に
