@@ -14,8 +14,10 @@ def isPassive(sentence):
         return False
     elif tags.count('VBN') == 1 and 'been' in words:                                    # one PP "been", still no passive voice.
         return False
+    #elif tags.count('VBN') == 1 and app in words:
+        #return False
     else:
-        pos = [i for i in range(len(tags)) if tags[i] == 'VBN' and words[i] != 'been']  # gather all the PPs that are not "been".
+        pos = [i for i in range(len(tags)) if tags[i] == 'VBN' and words[i] != 'been' and words[i] not in app]  # gather all the PPs that are not "been".
         #print(len(tags)) #is sum of words include '.,?'
         for end in pos:
             chunk = tags[:end]
@@ -27,22 +29,18 @@ def isPassive(sentence):
                     break
             sentchunk = words[start:end] #words chunk 
             tagschunk = tags[start:end]
-            #print(pos)
-            #print(tagschunk) #tags chunk
-            #adjectivepos = [i for i in sentchunk[i].lower() if in app] # get adjectives in between
-            #print(adjectivepos)
             verbspos = [i for i in range(len(tagschunk)) if tagschunk[i].startswith('V')] # get all the verbs in between
             count = 0 
             if verbspos != []:   # if there are no verbs in between, it's not passive
                 for i in verbspos:
-                    if sentchunk[i].lower() not in beforms and sentchunk[i].lower() not in aux:  # check if they are all forms of "be" or auxiliaries such as "do" or "have".
-                        break
-            #elif adjectivepos != []:
+                   if sentchunk[i].lower() not in beforms and sentchunk[i].lower() not in aux:  # check if they are all forms of "be" or auxiliaries such as "do" or "have".
+                       break
+            #if adjectivepos != []:
             #    for i in adjectivepos:
             #        if sentchunk[i].lower() not in app:
-            #            break
-                    if sentchunk[i].lower() in app:
-                        break
+            #           break
+                   #if sentchunk[i].lower() in app:
+                      # break
                 else:
                     #count = count + 1
                     return True 
