@@ -20,29 +20,37 @@ She has been beautiful since birth.
 I am bored.
 '''
 
+#file = open("./Active_vs_passive.txt", "r")
+#fd = nltk.FreqDist(preprocess(file.read()))
+#cumulative = 0.0
+#most_common_words = [word for (word, count) in fd.most_common()]
+#for rank, word in enumerate(most_common_words):
+#    cumulative += fd.freq(word)
+#    print("%3d %6.2f%% %s" % (rank + 1, cumulative * 100, word))
+#    if cumulative > 0.25:
+#        break
+#print(most_common_words)
 
 def preprocess(sentence):
      strlow = sentence.lower()
      splstr = strlow.split()
      sedstr = [word.strip('@#-.,!;()[]\n') for word in splstr]
      sedstr = [word.replace("'s", '') for word in sedstr]
-     #word_tokens = word_tokenize(sed_str)
-     #filtered_sent = [w for w in sedstr if not w.lower() in en_stops]
-     #filtered_sent = []
-     #for w in sedstr:
-     #    if w not in en_stops:
-     #        filtered_sent.append(w)
      return sedstr
 
-def amount_pos(sentence):
-    #ext = []
-    tokens = nltk.pos_tag(preprocess(sentence))
-    out = [lis[1] for lis in tokens]
-    cnt = Counter(out)
-    return cnt.most_common()
-#most_common() option is sort by decending number of element
+file = open("./Active_vs_passive.txt", "r")
+sentence = file.read()
+tokens = nltk.pos_tag(preprocess(sentence))
+out = [lis[1] for lis in tokens]
+#respect https://www.nltk.org/book/ch04.html
+fd = nltk.FreqDist(out)
+print(fd.most_common(10))
+most_common_words = [word for (word, count) in fd.most_common()]
+for rank, word in enumerate(most_common_words):
+    print("%3d %6.2f%% %s" % (rank + 1, fd.freq(word) * 100, word))
 
-print("*************************Count the number of pos**********************************",amount_pos(samples),sep='\n')
+cnt = Counter(out)
+print(cnt.most_common())
 
 def isPassive(sentence):
     cntpos = 0
@@ -51,18 +59,12 @@ def isPassive(sentence):
     app = ['alarmed', 'aggravated', 'amazed', 'amused', 'annoyed', 'astonished', 'astounded', 'bewildered', 'bored', 'captivated', 'challenged', 'charmed', 'comforted', 'concerned', 'confused', 'convinced', 'depressed', 'devastated', 'disappointed', 'discouraged', 'disgusted', 'distressed', 'disturbed', 'embarrassed', 'enchanted', 'encouraged', 'energise', 'entertained', 'exasperated', 'excited', 'exhausted', 'fascinated', 'flattered', 'frightened', 'frustrated', 'fulfilled', 'gratified', 'horrified', 'humiliated', 'inspired', 'insulted', 'interested', 'intrigued', 'irritated', 'mystified', 'moved', 'overwhelmed', 'perplexed', 'perturbed', 'pleased', 'puzzled', 'relaxed', 'satisfied', 'shocked', 'sickened', 'soothed', 'surprised', 'tempted', 'terrified', 'threatened', 'thrilled', 'tired', 'touched', 'troubled', 'unnerved', 'unsettled', 'upset', 'worried']
     words = preprocess(sentence)
     #i would like to do  words.remove(-.,\n?)
-    #print(words)
     tokens = nltk.pos_tag(words)
     #extract pos tagging information
-    #out = [lis[1] for lis in tokens]
+    out = [lis[1] for lis in tokens]
     dict = {}
     for element in tokens:
         dict[element] = dict.get(element, 0) + 1
-    #output = collections.defaultdict(int)
-    #for elem in out:
-    #    dict[elem[0]] += 1
-    #i would like to sort acending order
-    #sorted(output.items(), key=lambda kv: kv[1], reverse=True)
     pos_freq = []
     for key, value in dict.items():
         pos_freq.append((key, value))
@@ -77,6 +79,7 @@ def isPassive(sentence):
         for end in pos:
             chunk = tags[:end]
             start = 0
+            #print(range(len(chunk), 0, -1)
             for i in range(len(chunk), 0, -1):
                 last = chunk.pop()
                 if last == 'NN' or last == 'PRP':
@@ -84,6 +87,7 @@ def isPassive(sentence):
                     break
             sentchunk = words[start:end] #words chunk 
             tagschunk = tags[start:end]
+            #print(tagschunk)
             verbspos = [i for i in range(len(tagschunk)) if tagschunk[i].startswith('V')] # get all the verbs in between
             if verbspos != []:   # if there are no verbs in between, it's not passive
                 for i in verbspos:
@@ -99,9 +103,9 @@ if __name__ == '__main__':
     # "awesome" is wrongly tagged as PP. So the sentence gets a "True".
     #amount_pos(samples)
     cnt = 0
-    cnt = samples.count('.')
+    cnt = sentence.count('.')
     print("This document has " + str(cnt) + " sentence")
-    sents = nltk.sent_tokenize(samples)
+    sents = nltk.sent_tokenize(sentence)
     for sent in sents:
         print(sent + '--> %s' % isPassive(sent))
 
