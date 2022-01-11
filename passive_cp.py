@@ -2,7 +2,9 @@
 import nltk
 from collections import Counter
 from nltk import word_tokenize
-#from nltk.corpus import stopwords
+#from matplotlib import pyplot as plt
+#import numpy as np
+from nltk.corpus import stopwords
 
 #stopwords.words('english')
 #en_stops = set(stopwords.words('english'))
@@ -43,11 +45,20 @@ sentence = file.read()
 tokens = nltk.pos_tag(preprocess(sentence))
 out = [lis[1] for lis in tokens]
 #respect https://www.nltk.org/book/ch04.html
+array = []
+postag = []
 fd = nltk.FreqDist(out)
 print(fd.most_common(10))
 most_common_words = [word for (word, count) in fd.most_common()]
+postag.append(most_common_words)
 for rank, word in enumerate(most_common_words):
+    array.append(fd.freq(word))
     print("%3d %6.2f%% %s" % (rank + 1, fd.freq(word) * 100, word))
+#fig = plt.figure(figsize =(10,7))
+#plt.pie(array, labels = postag)
+
+#there are two array's type is list
+#plt.show()
 
 cnt = Counter(out)
 print(cnt.most_common())
