@@ -2,8 +2,8 @@
 import nltk
 from collections import Counter
 from nltk import word_tokenize
-#from matplotlib import pyplot as plt
-#import numpy as np
+from matplotlib import pyplot as plt
+import numpy as np
 from nltk.corpus import stopwords
 
 #stopwords.words('english')
@@ -22,16 +22,8 @@ She has been beautiful since birth.
 I am bored.
 '''
 
-#file = open("./Active_vs_passive.txt", "r")
-#fd = nltk.FreqDist(preprocess(file.read()))
-#cumulative = 0.0
-#most_common_words = [word for (word, count) in fd.most_common()]
-#for rank, word in enumerate(most_common_words):
-#    cumulative += fd.freq(word)
-#    print("%3d %6.2f%% %s" % (rank + 1, cumulative * 100, word))
-#    if cumulative > 0.25:
-#        break
-#print(most_common_words)
+file = open("./resource/Active_vs_passive.txt", "r")
+sentence = file.read()
 
 def preprocess(sentence):
      strlow = sentence.lower()
@@ -40,28 +32,30 @@ def preprocess(sentence):
      sedstr = [word.replace("'s", '') for word in sedstr]
      return sedstr
 
-file = open("./Active_vs_passive.txt", "r")
-sentence = file.read()
-tokens = nltk.pos_tag(preprocess(sentence))
-out = [lis[1] for lis in tokens]
-#respect https://www.nltk.org/book/ch04.html
-array = []
-postag = []
-fd = nltk.FreqDist(out)
-print(fd.most_common(10))
-most_common_words = [word for (word, count) in fd.most_common()]
-postag.append(most_common_words)
-for rank, word in enumerate(most_common_words):
-    array.append(fd.freq(word))
-    print("%3d %6.2f%% %s" % (rank + 1, fd.freq(word) * 100, word))
-#fig = plt.figure(figsize =(10,7))
-#plt.pie(array, labels = postag)
+def piechart(sentence):
+    tokens = nltk.pos_tag(preprocess(sentence))
+    out = [lis[1] for lis in tokens]
+    #respect https://www.nltk.org/book/ch04.html
+    array = []
+    fd = nltk.FreqDist(out)
+    print(fd.most_common(10))
+    most_common_words = [word for (word, count) in fd.most_common()]
+    for rank, word in enumerate(most_common_words):
+        array.append(fd.freq(word))
+        print("%3d %6.2f%% %s" % (rank + 1, fd.freq(word) * 100, word))
+    percentage = array
+    labels = list(most_common_words)
+hoge
+    colors = ['yellowgreen', 'lightgreen', 'darkgreen', 'gold', 'red', 'lightsalmon', 'darkred']
+    plt.pie(percentage, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True,  startangle=90)
+    plt.axis('equal')
+    #plt.legend
+    return plt.show()
 
-#there are two array's type is list
-#plt.show()
+piechart(sentence)
 
-cnt = Counter(out)
-print(cnt.most_common())
+#cnt = Counter(out)
+#print(cnt.most_common())
 
 def isPassive(sentence):
     cntpos = 0
