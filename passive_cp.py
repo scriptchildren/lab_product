@@ -22,38 +22,89 @@ She has been beautiful since birth.
 I am bored.
 '''
 
-file = open("./resource/Active_vs_passive.txt", "r")
+file = open("../source/Active_vs_passive.txt", "r")
 sentence = file.read()
 
-def preprocess(sentence):
+#pp stands for preprocess
+def pp(sentence):
      strlow = sentence.lower()
      splstr = strlow.split()
      sedstr = [word.strip('@#-.,!;()[]\n') for word in splstr]
      sedstr = [word.replace("'s", '') for word in sedstr]
      return sedstr
 
-def piechart(sentence):
-    tokens = nltk.pos_tag(preprocess(sentence))
+def make_list(sentence):
+    array = []
+    tokens = nltk.pos_tag(pp(sentence))
     out = [lis[1] for lis in tokens]
     #respect https://www.nltk.org/book/ch04.html
-    array = []
     fd = nltk.FreqDist(out)
-    print(fd.most_common(10))
-    most_common_words = [word for (word, count) in fd.most_common()]
-    for rank, word in enumerate(most_common_words):
+    #print(fd.most_common(10))
+    most_common_words = [word for (word, count) in fd.most_common()] # noramally executable
+    pos_freq = [i[1] for i in fd.most_common()]
+    for word in most_common_words:
         array.append(fd.freq(word))
-        print("%3d %6.2f%% %s" % (rank + 1, fd.freq(word) * 100, word))
     percentage = array
     labels = list(most_common_words)
-hoge
-    colors = ['yellowgreen', 'lightgreen', 'darkgreen', 'gold', 'red', 'lightsalmon', 'darkred']
-    plt.pie(percentage, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True,  startangle=90)
-    plt.axis('equal')
-    #plt.legend
-    return plt.show()
+    return most_common_words,percentage,fd,pos_freq
 
-piechart(sentence)
+lists = make_list(sentence)
 
+#colors = ['yellowgreen', 'lightgreen', 'darkgreen', 'gold', 'red', 'lightsalmon', 'darkred']
+#plt.pie(percentage, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True,  startangle=90)
+#plt.axis('equal')
+#plt.legend
+
+#print this line pos freq ranking
+def make_ranking(mcw):
+    for rank, word in enumerate(mcw):
+        print("%3d %6.2f%% %s" % (rank + 1, lists[2].freq(word) * 100, word))
+
+make_ranking(lists[0])
+#piechart(sentence)
+
+
+def histchart(x, y):
+     """ 棒グラフを表示する関数
+     引数：
+     x -- x軸の値
+     y -- y軸の値
+     """
+     # グラフの装飾
+     plt.title("Each Pos-tag number", fontsize = 26) #タイトル
+     plt.xlabel("Pos-tag", fontsize = 26) #x軸
+     plt.ylabel("Pos number", fontsize = 26) #y軸
+     plt.grid(True) #目盛り線の表示
+     plt.tick_params(labelsize=13) #目盛り線のラベルサイズ
+
+     #グラフの描画
+     plt.bar(x,y,tick_label=x,align="center",color="c") #棒グラフの描画
+
+def piechart(x,y,c):
+     """ 円グラフを表示する関数
+     引数 :　c -- 色指定
+     """
+
+     #グラフの装飾
+     plt.title("Pos-tag freaquence", fontsize = 26)
+     plt.rcParams['font.size'] = 13.0
+
+     #グラフ描画
+     plt.pie(y, labels=x, counterclock=True,autopct="%1.1f%%",colors=c) #円グラフの描画
+
+#データ準備
+pie_colors = ["r", "c", "b", "m", "y"] # 製品毎の色指定
+
+#グラフの描画
+plt.figure(figsize=(25,10)) #描画領域の指定
+plt.subplots_adjust(wspace=0.2, hspace=0) #間隔指定
+
+plt.subplot(1,2,1) #グラフ描画位置の指定
+histchart(lists[0], lists[3])
+
+plt.subplot(1,2,2) #グラフ描画位置の指定
+piechart(lists[0], lists[1], pie_colors)
+plt.show()
 #cnt = Counter(out)
 #print(cnt.most_common())
 
@@ -62,7 +113,7 @@ def isPassive(sentence):
     beforms = ['am', 'is', 'are', 'been', 'was', 'were', 'be', 'being']               # all forms of "be"
     aux = ['do', 'did', 'does', 'have', 'has', 'had']                                  # NLTK tags "do" and "have" as verbs, which can be misleading in the following section.
     app = ['alarmed', 'aggravated', 'amazed', 'amused', 'annoyed', 'astonished', 'astounded', 'bewildered', 'bored', 'captivated', 'challenged', 'charmed', 'comforted', 'concerned', 'confused', 'convinced', 'depressed', 'devastated', 'disappointed', 'discouraged', 'disgusted', 'distressed', 'disturbed', 'embarrassed', 'enchanted', 'encouraged', 'energise', 'entertained', 'exasperated', 'excited', 'exhausted', 'fascinated', 'flattered', 'frightened', 'frustrated', 'fulfilled', 'gratified', 'horrified', 'humiliated', 'inspired', 'insulted', 'interested', 'intrigued', 'irritated', 'mystified', 'moved', 'overwhelmed', 'perplexed', 'perturbed', 'pleased', 'puzzled', 'relaxed', 'satisfied', 'shocked', 'sickened', 'soothed', 'surprised', 'tempted', 'terrified', 'threatened', 'thrilled', 'tired', 'touched', 'troubled', 'unnerved', 'unsettled', 'upset', 'worried']
-    words = preprocess(sentence)
+    words = pp(sentence)
     #i would like to do  words.remove(-.,\n?)
     tokens = nltk.pos_tag(words)
     #extract pos tagging information
