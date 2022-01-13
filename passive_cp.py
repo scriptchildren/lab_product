@@ -63,7 +63,7 @@ def make_ranking(mcw):
 make_ranking(lists[0])
 #piechart(sentence)
 
-
+# respect https://ai-inter1.com/python-multichart/
 def histchart(x, y):
      """ 棒グラフを表示する関数
      引数：
