@@ -1,86 +1,185 @@
 #quote koshihara's code#
+from telnetlib import KERMIT
 from flask import Flask, render_template, request
 app = Flask(__name__)
 
 import urllib, base64
 import io
 import re
-import collections
+import ast
 import nltk
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-nltk.download('stopwords')
 from nltk.util import ngrams
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import textstat
 from textstat.textstat import textstatistics,legacy_round
+from lexicalrichness import LexicalRichness
+from nltk.stem import PorterStemmer
+from nltk.stem.wordnet import WordNetLemmatizer
+from operator import itemgetter
+from itertools import groupby
 
+nltk.download("punkt")
+nltk.download("wordnet")
+
+cont_dict = open("./contractions_dict.txt", "r", encoding = 'utf-8')
+cont_dict = cont_dict.read()
+cont_dict = ast.literal_eval(cont_dict)
+contractions_re = re.compile('(%s)'%'|'.join(cont_dict.keys()))
 
 stopwords.words('english')
 en_stops = set(stopwords.words('english'))
-
-nltk.download('punkt')
 
 #def create_n_gram(text):
 #    for i in range(1, 6):
 #        output = list(ngrams(preprocess(text), i))
 #    return output
 
-def preprocess(text):
-    strlow = text.lower()
-    splstr = strlow.split()
-    sedstr = [word.strip('.,!;()[]\n') for word in splstr]
-    sedstr = [word.replace("'s", '') for word in sedstr]
-    filtered_sent = [w for w in sedstr if not w.lower() in en_stops]
-    filtered_sent = []
-    for w in sedstr:
+def preprocess(file):
+    def expand_contractions(s, cont_dict=cont_dict):
+        def replace(match):
+            return cont_dict[match.group(0)]
+        return contractions_re.sub(replace, s)
+
+    sentence = expand_contractions(file)
+    sentence = word_tokenize(sentence)
+
+    def remove_punct(token):
+        return [word for word in token if word.isalpha()]
+    sent = remove_punct(sentence)
+    ps = PorterStemmer()
+    #ps_stem_sent = [ps.stem(words_sent) for words_sent in sent]
+    lemmatizer = WordNetLemmatizer()
+    lem_sent = [lemmatizer.lemmatize(words_sent) for words_sent in sent]
+    filtered_sent = [w for w in lem_sent if not w.lower() in en_stops]
+    for w in lem_sent:
         if w not in en_stops:
             filtered_sent.append(w)
     return filtered_sent
 
-def create_n_gram(Q,K):
+#def display_freqdist(Q, K):
+ #   fd_1 = nltk.FreqDist(preprocess(Q))
+ #   fd_2 = nltk.FreqDist(preprocess(K))
+ #   fd_1.plot(50, cumulative=False)
+ #   fd_2.plot(50, cumulative=False)
+ #   #fd = nltk.FreqDist(preprocess(string))
+ #   #fd.plot(50, cumulative=False)
+ #  fig = plt.figure(figsize = (10,4))
+ #   fig = plt.gcf().canvas.draw()
+ #   buf = io.BytesIO()
+ #   fig.savefig(buf, format='png')
+ #   buf.seek(0)
+ #   string = base64.b64encode(buf.read())
+ #   uri = urllib.parse.quote(string)
+ #   return uri
+
+#https://www.geeksforgeeks.org/removing-stop-words-nltk-python/
+#This parts is truly functionalize. But, idk how to make function case wants to two variables. 
+def calc_ngram(Q,K):
     total_check_count = 0
-    tcc = []
     equal_count = 0
-    ec = []
     similality = 0
+    ec = []
+    tcc = []
     sim = []
-    out1 = []
-    out2 = []
-    ngr = []
-    for i in range(1, 6):
-        ngr.append(i)
+    et = []
+    et_tmp = []
+    top_freq = []
+    top_freq_tmp = []
+    #out1 = []
+    #out2 = []
+    i = 0
+    while True:
+        i += 1
         output1 = list(ngrams(preprocess(Q), i))
+        #out_len1 = len(output1)
         output2 = list(ngrams(preprocess(K), i))
-        out1.append(output1)
-        out2.append(output2)
-        #print("This is " + str(i) + "-grams of Q text")
-        #print(output1)
-        #print("This is " + str(i) + "-grams of K text")
-        #print(output2)
+        #out_len2 = len(output2)
+        #if out_len1 == 0  or out_len2 == 0:
+        #    break
+        equal_token = []
         for op1_word in output1:
-            total_check_count = total_check_count+1
-            tcc.append(total_check_count)
+            total_check_count += 1
             equal_flag = 0
             for op2_word in output2:
                 if op1_word == op2_word:
                     equal_flag = 1
-            equal_count = equal_count+equal_flag
-            ec.append(equal_count)
+                    equal_token.append(op1_word)
+            equal_count += equal_flag
             similality = equal_count/total_check_count
-            sim.append(similality)
-        print('一致した単語数　　：',equal_count)
-        print('チェックした単語数：',total_check_count)
-        print('一致率(類似度)     　：',equal_count/total_check_count)
-        return ec, tcc, sim, out1, out2, ngr
-    #ngram_list = []
-    #for i in range(1, 6):
-    #   output = list(ngrams(preprocess(text), i))
-    #   ngram_list.append(output)
-    #return ngram_list
+            
+        if len(equal_token) == 0:
+            break
+                #if similality == 0:
+                    #break
+        fd = nltk.FreqDist(equal_token)
+        top10_freq = fd.most_common(10)
+        ec.append(equal_count)
+        tcc.append(total_check_count)
+        sim.append(similality)
+        et_tmp.append(equal_token)
+        et.append(et_tmp)
+        top_freq_tmp.append(top10_freq)
+        top_freq.append(top_freq_tmp)
+        #print(sim[i-1])
+        #else:
+        #    print(finish)
+    return ec, tcc, sim, et, top_freq
+
+def character_ngram(Q,K):
+    total_check_count = 0
+    equal_count = 0
+    similality = 0
+    ec = []
+    tcc = []
+    sim = []
+    et = []
+    et_tmp = []
+    top_freq = []
+    top_freq_tmp = []
+    #out1 = []
+    #out2 = []
+    i = 0
+    while True:
+        i += 1
+        output1 = list(ngrams(''.join(preprocess(Q)), i))
+        #out_len1 = len(output1)
+        output2 = list(ngrams(''.join(preprocess(K)), i))
+        #out_len2 = len(output2)
+        #if out_len1 == 0  or out_len2 == 0:
+        #    break
+        equal_token = []
+        for op1_word in output1:
+            total_check_count += 1
+            equal_flag = 0
+            for op2_word in output2:
+                if op1_word == op2_word:
+                    equal_flag = 1
+                    equal_token.append(op1_word)
+            equal_count += equal_flag
+            similality = equal_count/total_check_count
+            
+        if len(equal_token) == 0:
+            break
+                #if similality == 0:
+                    #break
+        fd = nltk.FreqDist(equal_token)
+        top10_freq = fd.most_common(10)
+        ec.append(equal_count)
+        tcc.append(total_check_count)
+        sim.append(similality)
+        et_tmp.append(equal_token)
+        et.append(et_tmp)
+        top_freq_tmp.append(top10_freq)
+        top_freq.append(top_freq_tmp)
+        #print(sim[i-1])
+        #else:
+        #    print(finish)
+    return ec, tcc, sim, et, top_freq
+
 
 #pp stands for preprocess
 def pp(sentence):
@@ -235,10 +334,15 @@ def readability(string):
         if diff_words > 5:
              raw_score += 3.6365
         return legacy_round(raw_score, 2)    
+    
+    def sentence_count(string):
+        sent_count = 0
+        sent_count = string.count('!') + string.count('?') + string.count('\n') + string.count('.')
+        return sent_count
       
     sedstring = string.replace(" ","")
     lists1 = []
-    lists1 += [flesch_reading_ease(string),gunning_fog(string),smog_index(string),dale_chall_readability_score(string),len(sedstring),str(textstat.lexicon_count(string)),str(textstat.sentence_count(string)),str(textstat.syllable_count(string))]
+    lists1 += [flesch_reading_ease(string),gunning_fog(string),smog_index(string),dale_chall_readability_score(string),len(sedstring),str(textstat.lexicon_count(string)),sentence_count(string),str(textstat.syllable_count(string))]
     return lists1
 
 pie_colors = ["r", "c", "b", "m", "y"] # 製品毎の色指定
@@ -253,7 +357,7 @@ def histchart(x,y):
      #plt.subplots_adjust(wspace=0.2, hspace=0) #間隔指定
      # グラフの装飾
      plt.title("Each Pos-tag number", fontsize = 26) #タイトル
-     plt.xlabel("Top 10 Pos-tag", fontsize = 18) #x軸
+     #plt.xlabel("Top 10 Pos-tag", fontsize = 18) #x軸
      plt.ylabel("Pos-freaquence", fontsize = 26) #y軸
      plt.grid(True) #目盛り線の表示
      plt.tick_params(labelsize=20) #目盛り線のラベルサイズ
@@ -286,10 +390,10 @@ def plot_chart(x,y,z):
     fig_hist = histchart(x,z)
     #plt.subplot(1,2,2) #グラフ描画位置の指定
     #piechart(lists[0], lists[1], pie_colors)
-    fig_pie = piechart(x,y,pie_colors)
+    #fig_pie = piechart(x,y,pie_colors)
     buf = io.BytesIO()
     fig_hist.savefig(buf, format='png')
-    fig_pie.savefig(buf, format='png')
+    #fig_pie.savefig(buf, format='png')
     buf.seek(0)
     string = base64.b64encode(buf.read())
     uri = urllib.parse.quote(string)
@@ -297,12 +401,68 @@ def plot_chart(x,y,z):
     #cnt = Counter(out)
     #print(cnt.most_common())
 
+def isPassive(sentence):
+    beforms = ['am', 'is', 'are', 'been', 'was', 'were', 'be', 'being']               # all forms of "be"
+    aux = ['do', 'did', 'does', 'have', 'has', 'had']                                  # NLTK tags "do" and "have" as verbs, which can be misleading in the following section.
+    app = ['alarmed', 'aggravated', 'amazed', 'amused', 'annoyed', 'astonished', 'astounded', 'bewildered', 'bored', 'captivated', 'challenged', 'charmed', 'comforted', 'concerned', 'confused', 'convinced', 'depressed', 'devastated', 'disappointed', 'discouraged', 'disgusted', 'distressed', 'disturbed', 'embarrassed', 'enchanted', 'encouraged', 'energise', 'entertained', 'exasperated', 'excited', 'exhausted', 'fascinated', 'flattered', 'frightened', 'frustrated', 'fulfilled', 'gratified', 'horrified', 'humiliated', 'inspired', 'insulted', 'interested', 'intrigued', 'irritated', 'mystified', 'moved', 'overwhelmed', 'perplexed', 'perturbed', 'pleased', 'puzzled', 'relaxed', 'satisfied', 'shocked', 'sickened', 'soothed', 'surprised', 'tempted', 'terrified', 'threatened', 'thrilled', 'tired', 'touched', 'troubled', 'unnerved', 'unsettled', 'upset', 'worried']
+    words = pp(sentence)
+    #i would like to do  words.remove(-.,\n?)
+    tokens = nltk.pos_tag(words)
+    #extract pos tagging information
+    #out = [lis[1] for lis in tokens]
+    dict = {}
+    for element in tokens:
+        dict[element] = dict.get(element, 0) + 1
+    pos_freq = []
+    for key, value in dict.items():
+        pos_freq.append((key, value))
+    #print(pos_freq)
+    tags = [i[1] for i in tokens]
+    if tags.count('VBN') == 0: # no PP, no passive voice.
+        return False
+    elif tags.count('VBN') == 1 and 'been' in words:  # one PP "been", still no passive voice.
+        return False
+    else:
+        pos = [i for i in range(len(tags)) if tags[i] == 'VBN' and words[i] != 'been' and words[i] not in app]  # gather all the PPs that are not "been" and are not adjective.
+        for end in pos:
+            chunk = tags[:end]
+            start = 0
+            #print(range(len(chunk), 0, -1)
+            for i in range(len(chunk), 0, -1):
+                last = chunk.pop()
+                if last == 'NN' or last == 'PRP':
+                    start = i                                                             # get the chunk between PP and the previous NN or PRP (which in most cases are subjects)
+                    break
+            sentchunk = words[start:end] #words chunk 
+            tagschunk = tags[start:end]
+            #print(tagschunk)
+            verbspos = [i for i in range(len(tagschunk)) if tagschunk[i].startswith('V')] # get all the verbs in between
+            if verbspos != []:   # if there are no verbs in between, it's not passive
+                for i in verbspos:
+                   if sentchunk[i].lower() not in beforms and sentchunk[i].lower() not in aux:  # check if they are all forms of "be" or auxiliaries such as "do" or "have".
+                       break
+                else:
+                    return True
+    return False
+
+def p_passive(sentence):
+        poscnt = 0
+        #sentcnt = 0
+        #sentcnt = sentence.count('.')
+        #print("This document has " + str(sentcnt) + " sentence")
+        sents = nltk.sent_tokenize(sentence)
+        for sent in sents:
+            if isPassive(sent) == True:
+                poscnt += 1
+        return poscnt
+
 def test_function():
     return "return text from test_function()"
 
 @app.route("/")
 def index():
     return render_template("public/index.html")
+
 
 @app.route("/about")
 def about():
@@ -321,22 +481,39 @@ def input_text():
     
 @app.route('/ngram', methods=["GET","POST"])
 def show_ngram():
+    index_len = 0
+    unique_list_freq = []
+    unique_list_words = []
+    tmp_ulw = []
+    tmp_j = []
     Q = request.form.get("send_Q") #get n-gram sentence
     K = request.form.get("send_K")
-    result = create_n_gram(Q,K)
-    #for index,m_words,c_words,sim in zip(result[5], result[0], result[1], result[2]):
-    #equal_count = result[0]
-    #total_check_count = result[1]
-    #similality = result[2]
-    #ngrm = result[5]
-    merge_list = list(set(result[5] + result[0] + result[1] + result[2]))
-    ind = ['1gram','2gram','3gram','4gram','5gram']
-    col = ['Ngram','Matched_words','checked_words','similality']
-    df = pd.DataFrame(merge_list, index=ind, columns=col)
-    df_values = df.values.tolist()
-    df_columns = df.columns.tolist()
-    df_index = df.index.tolist()
-    return render_template('table.html', title="ngram", name="show_name", df_values = df_values, df_columns = df_columns, df_index = df_index, output1=result[3], output2=result[4]) #render_template())
+    index_len = len(calc_ngram(Q, K)[3])
+    # remove duplicate matched words
+    unique_list_words = []
+    for i in calc_ngram(Q, K)[3]:
+        unique_list_words = list(map(itemgetter(0), groupby(i)))
+    uniq_lis_words = []
+    for j in range(len(unique_list_words)):
+        uniq_lis_words = list(map(itemgetter(0), groupby(unique_list_words[j])))
+        tmp_ulw.append(uniq_lis_words)
+    ulw_neo = []
+    for k in range(len(tmp_ulw)):
+        ulw_neo.append(list(set(tmp_ulw[k])))
+
+    # remove duplicate freq words
+    unique_list_freq = list(map(itemgetter(0), groupby(calc_ngram(Q, K)[4])))
+    for i in unique_list_freq:
+        for j in i:
+            tmp_j.append(j)
+    df1 = pd.DataFrame({'Number of matched words': calc_ngram(Q, K)[0],
+                        'Checked words': calc_ngram(Q, K)[1],
+                        'Similality': calc_ngram(Q, K)[2],
+                        'Matched words': ulw_neo,
+                        'Freaquecy of Matched words': tmp_j},
+                        index=[i for i in range(1, index_len+1)])
+# remove duplicate freq words
+    return render_template('ngram.html', title="ngram", name="show_name", df1=df1.to_html()) #render_template())
     #return 'input_text: %s' % input_text
 
 #this is readability
@@ -346,10 +523,21 @@ def show_read():
     K = request.form.get("send_K")
     df1 = pd.DataFrame({'Q': readability(Q),
                         'K': readability(K)},
-                       index=['diff', 'Gunning-Fog', 'SMOG', 'DCRS', 'length', 'total', 'sentence', 'syllable'])
+                       index=['FRE', 'Gunning-Fog', 'SMOG', 'DCRS', 'length', 'Lexicon-count', 'sentence-count', 'syllable'])
     #return render_template('read.html', title="read", name="show_name", )
-    return render_template('read.html', title="read", name="show_name", df1=df1.to_html())
+    lex_Q = LexicalRichness(Q)
+    lex_K = LexicalRichness(K)
+    lex_Q_score = []
+    lex_Q_score += [lex_Q.ttr,lex_Q.rttr,lex_Q.cttr,lex_Q.msttr(segment_window=25),lex_Q.mattr(window_size=25),lex_Q.mtld(threshold=0.72),lex_Q.hdd(draws=42),lex_Q.Herdan,lex_Q.Summer,lex_Q.Dugast,lex_Q.Maas]
+    lex_K_score = []
+    lex_K_score += [lex_K.ttr,lex_K.rttr,lex_K.cttr,lex_K.msttr(segment_window=25),lex_K.mattr(window_size=25),lex_K.mtld(threshold=0.72),lex_K.hdd(draws=42),lex_K.Herdan,lex_K.Summer,lex_K.Dugast,lex_K.Maas]
+    df2 = pd.DataFrame({'Q': lex_Q_score,
+                        'K': lex_K_score},
+                       index=['TTR', 'RTTR', 'CTTR', 'MSTTR', 'MATTR', 'MTLD', 'HDD', 'Herdan', 'Summer', 'Dugast', 'Maas'])
+    return render_template('read.html', title="read", name="show_name", df1=df1.to_html(), df2=df2.to_html())
 #in order to develope http makes sample 
+#https://matplotlib.org/devdocs/gallery/user_interfaces/web_application_server_sgskip.html
+#this is sample of how to display multiple images in same page.
 @app.route('/passive', methods=["GET","POST"])
 def show_passive():
     Q = request.form.get("send_Q")
@@ -369,16 +557,27 @@ def show_passive():
     # グラフを作成する。
     fig_Q = plot_chart(lists1[0], lists1[1], lists1[3])
     fig_K = plot_chart(lists2[0], lists2[1], lists2[3])
-    #output = io.BytesIO()
-    #FigureCanvas(fig).print_png(output)
-    return render_template('passive.html', title="passive", name="show_name", df1=df1.to_html(), df2=df2.to_html(), img_Q=fig_Q, img_K=fig_K)
+    passive_num_Q = p_passive(Q)
+    passive_num_K = p_passive(K)
+    return render_template('passive.html', title="passive", name="show_name", df1=df1.to_html(), df2=df2.to_html(), img_Q=fig_Q, img_K=fig_K, passive_num_Q=passive_num_Q, passive_num_K=passive_num_K)
     #return render_template('passive.html', title="passive", name="show_name", df1=df1.to_html())
 #this is under-construction
-#@app.route('/gram_feature', method["GET","POST"])
-#def show_gramf():
-#    input_text3 = request.form.get("send_c")
-#    result = function(input_text3)
-#    return render_template('gram_feature.html', title="gram_feat", name="show_name", )
+@app.route('/character', methods=["GET","POST"])
+def character():
+    Q = request.form.get("send_Q")
+    K = request.form.get("send_K")
+    tmp_char = []
+    index_len = len(character_ngram(Q, K)[3])
+    unique_char_freq = list(map(itemgetter(0), groupby(character_ngram(Q.lower(), K.lower())[4])))
+    for i in unique_char_freq:
+       for j in i:
+           tmp_char.append(j)
+    df1 = pd.DataFrame({'Number of matched words': character_ngram(Q, K)[0],
+                        'Checked words': character_ngram(Q, K)[1],
+                        'Similality': character_ngram(Q, K)[2],
+                        'Freaquecy of Matched words': tmp_char},
+                        index=[i for i in range(1, index_len+1)])
+    return render_template('character.html', title="gram_feat", name="show_name", df1=df1.to_html())
 
 if __name__ == "__main__":
     app.run(debug=True)
