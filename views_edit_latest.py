@@ -21,6 +21,8 @@ from nltk.stem import PorterStemmer
 from nltk.stem.wordnet import WordNetLemmatizer
 from operator import itemgetter
 from itertools import groupby
+import math
+from collections import Counter
 
 nltk.download("punkt")
 nltk.download("wordnet")
@@ -32,6 +34,8 @@ contractions_re = re.compile('(%s)'%'|'.join(cont_dict.keys()))
 
 stopwords.words('english')
 en_stops = set(stopwords.words('english'))
+
+WORD = re.compile(r"\w+")
 
 #def create_n_gram(text):
 #    for i in range(1, 6):
@@ -456,6 +460,24 @@ def p_passive(sentence):
                 poscnt += 1
         return poscnt
 
+def get_cosine(vec1, vec2):
+    intersection = set(vec1.keys()) & set(vec2.keys())
+    numerator = sum([vec1[x] * vec2[x] for x in intersection])
+
+    sum1 = sum([vec1[x] ** 2 for x in list(vec1.keys())])
+    sum2 = sum([vec2[x] ** 2 for x in list(vec2.keys())])
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+
+    if not denominator:
+        return 0.0
+    else:
+        return float(numerator) / denominator
+
+def text_to_vector(text):
+    words = WORD.findall(text)
+    return Counter(words)
+
+
 def test_function():
     return "return text from test_function()"
 
@@ -572,12 +594,16 @@ def character():
     for i in unique_char_freq:
        for j in i:
            tmp_char.append(j)
+    vector1 = text_to_vector(Q)
+    vector2 = text_to_vector(K)
+
+    cosine = get_cosine(vector1, vector2)
     df1 = pd.DataFrame({'Number of matched words': character_ngram(Q, K)[0],
                         'Checked words': character_ngram(Q, K)[1],
                         'Similality': character_ngram(Q, K)[2],
                         'Freaquecy of Matched words': tmp_char},
                         index=[i for i in range(1, index_len+1)])
-    return render_template('character.html', title="gram_feat", name="show_name", df1=df1.to_html())
+    return render_template('character.html', title="gram_feat", name="show_name", df1=df1.to_html(), cosine=cosine)
 
 if __name__ == "__main__":
     app.run(debug=True)
